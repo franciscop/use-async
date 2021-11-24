@@ -1,0 +1,48 @@
+{
+  "name": "use-async",
+  "version": "1.0.1",
+  "description": "React hooks to make handling async operations a breeze",
+  "homepage": "https://github.com/franciscop/use-async.git",
+  "repository": "https://github.com/franciscop/use-async.git",
+  "bugs": "https://github.com/franciscop/use-async/issues",
+  "funding": "https://www.paypal.me/franciscopresencia/19",
+  "author": "Francisco Presencia <public@francisco.io> (https://francisco.io/)",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "rollup -c",
+    "size": "echo $(gzip -c index.min.js | wc -c) bytes",
+    "start": "jest --watch",
+    "test": "jest --coverage"
+  },
+  "keywords": [
+    "use-async",
+    "react",
+    "hooks",
+    "async"
+  ],
+  "main": "index.min.js",
+  "files": [],
+  "devDependencies": {
+    "@babel/core": "^7.15.0",
+    "@babel/preset-env": "^7.15.0",
+    "@babel/preset-react": "^7.14.5",
+    "babel-loader": "^8.2.2",
+    "babel-polyfill": "^6.26.0",
+    "jest": "^25.3.0",
+    "react": ">=16.8.0",
+    "react-test": "^0.9.1",
+    "rollup": "^1.32.1",
+    "rollup-plugin-babel": "^4.4.0",
+    "rollup-plugin-terser": "^5.2.0"
+  },
+  "peerDependencies": {
+    "react": ">=16.8.0"
+  },
+  "babel": {
+    "presets": [
+      "@babel/preset-env",
+      "@babel/preset-react"
+    ]
+  }
+}
