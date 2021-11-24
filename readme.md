@@ -1,4 +1,4 @@
-# Use Async
+# Use Async  [![npm install use-async](https://img.shields.io/badge/npm%20install-use--async-blue.svg "install badge")](https://www.npmjs.com/package/use-async) [![test badge](https://github.com/franciscop/use-async/workflows/tests/badge.svg "test badge")](https://github.com/franciscop/use-async/blob/master/.github/workflows/tests.yml) [![gzip size](https://img.badgesize.io/franciscop/use-async/master/index.min.js.svg?compression=gzip "gzip badge")](https://github.com/franciscop/use-async/blob/master/index.min.js)
 
 React hooks to make handling async operations a breeze:
 
