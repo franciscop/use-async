@@ -1,11 +1,13 @@
 {
   "name": "use-async",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "React hooks to make handling async operations a breeze",
   "homepage": "https://github.com/franciscop/use-async.git",
   "repository": "https://github.com/franciscop/use-async.git",
   "bugs": "https://github.com/franciscop/use-async/issues",
-  "funding": "https://www.paypal.me/franciscopresencia/19",
+  "funding": {
+    "url": "https://www.paypal.me/franciscopresencia/19"
+  },
   "author": "Francisco Presencia <public@francisco.io> (https://francisco.io/)",
   "license": "MIT",
   "type": "module",
