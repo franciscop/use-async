@@ -4,17 +4,13 @@ export function useAsyncEffect(cb, deps = []) {
   useEffect(() => {
     const controller = new AbortController();
     const signal = controller.signal;
-    Promise.resolve(cb(signal))
-      .then(async res => {
-        // Handle any possible cleanup
-        if (res && typeof res === "function") {
-          if (signal.aborted) res();
-          signal.addEventListener("abort", res);
-        }
-      })
-      .catch(error => {
-        console.log(error);
-      });
+    Promise.resolve(cb(signal)).then(async res => {
+      // Handle any possible cleanup
+      if (res && typeof res === "function") {
+        if (signal.aborted) res();
+        signal.addEventListener("abort", res);
+      }
+    });
     return () => {
       if (signal.aborted) return;
       controller.abort();
