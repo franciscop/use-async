@@ -4,7 +4,7 @@ export function useAsyncEffect(cb, deps = []) {
   useEffect(() => {
     const controller = new AbortController();
     const signal = controller.signal;
-    Promise.resolve(cb(signal))
+    Promise.resolve(cb(signal, ...deps))
       .then(async res => {
         // Handle any possible cleanup
         if (res && typeof res === "function") {
@@ -33,7 +33,7 @@ export function useAsyncEffect(cb, deps = []) {
 }
 
 export function useAsyncData(cb, deps = []) {
-  const [pair, setPair] = useState([null, "LOADING"]);
+  const [pair, setPair] = useState([undefined, "LOADING"]);
   useAsyncEffect(async signal => {
     // Update _only_ if the prev state is not "LOADING"
     setPair(prev => (prev[1] === "LOADING" ? prev : [prev[0], "LOADING"]));
