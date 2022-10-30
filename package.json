@@ -5,12 +5,9 @@
   "homepage": "https://github.com/franciscop/use-async.git",
   "repository": "https://github.com/franciscop/use-async.git",
   "bugs": "https://github.com/franciscop/use-async/issues",
-  "funding": {
-    "url": "https://www.paypal.me/franciscopresencia/19"
-  },
+  "funding": "https://www.paypal.me/franciscopresencia/19",
   "author": "Francisco Presencia <public@francisco.io> (https://francisco.io/)",
   "license": "MIT",
-  "type": "module",
   "scripts": {
     "build": "rollup -c",
     "size": "echo $(gzip -c index.min.js | wc -c) bytes",
@@ -21,9 +18,11 @@
     "use-async",
     "react",
     "hooks",
-    "async"
+    "async",
+    "use-effect"
   ],
   "main": "index.min.js",
+  "type": "module",
   "files": [],
   "devDependencies": {
     "@babel/core": "^7.15.0",
@@ -31,9 +30,10 @@
     "@babel/preset-react": "^7.14.5",
     "babel-loader": "^8.2.2",
     "babel-polyfill": "^6.26.0",
-    "jest": "^25.3.0",
-    "react": ">=16.8.0",
-    "react-test": "^0.9.1",
+    "jest": "^28.1.0",
+    "jest-environment-jsdom": "^28.1.0",
+    "react": "^18.2.0",
+    "react-test": "^0.19.0",
     "rollup": "^1.32.1",
     "rollup-plugin-babel": "^4.4.0",
     "rollup-plugin-terser": "^5.2.0"
@@ -46,5 +46,8 @@
       "@babel/preset-env",
       "@babel/preset-react"
     ]
+  },
+  "jest": {
+    "testEnvironment": "jsdom"
   }
 }
