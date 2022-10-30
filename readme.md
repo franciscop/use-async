@@ -1,48 +1,41 @@
-# Use Async  [![npm install use-async](https://img.shields.io/badge/npm%20install-use--async-blue.svg "install badge")](https://www.npmjs.com/package/use-async) [![test badge](https://github.com/franciscop/use-async/workflows/tests/badge.svg "test badge")](https://github.com/franciscop/use-async/blob/master/.github/workflows/tests.yml) [![gzip size](https://img.badgesize.io/franciscop/use-async/master/index.min.js.svg?compression=gzip "gzip badge")](https://github.com/franciscop/use-async/blob/master/index.min.js)
+# Use Async [![npm install use-async](https://img.shields.io/badge/npm%20install-use--async-blue.svg "install badge")](https://www.npmjs.com/package/use-async) [![test badge](https://github.com/franciscop/use-async/workflows/tests/badge.svg "test badge")](https://github.com/franciscop/use-async/blob/master/.github/workflows/tests.yml) [![gzip size](https://img.badgesize.io/franciscop/use-async/master/index.min.js.svg?compression=gzip "gzip badge")](https://github.com/franciscop/use-async/blob/master/index.min.js)
 
-React hooks to make handling async operations a breeze and avoid race conditions:
+Like useEffect, but async for ease of use:
 
 ```js
-import { useAsyncEffect, useAsyncData } from "use-async";
+import useAsync from "use-async";
 
-// Simple async effect handling:
-useAsyncEffect(async () => {
-  const res = await axios.get("/endpoint/");
-  setState(res.data);
-}, []);
+const LoadData = () => {
+  const [data, setData] = useState(null);
 
-// Avoid race conditions with the proper dependencies and "signal"
-useAsyncEffect(async signal => {
-  const data = await getUserProfile(id);
-  if (signal.aborted) return;  // <= This avoids race conditions
-  setProfile(data);
-}, [id]);
+  useAsync(async () => {
+    const info = await someAsyncOp();
+    setState(info);
+  }, [id]);
 
-// When the primary objective is to fetch data for the component, the helper
-// useAsyncData() might make your life easier. Here, we create a separated pure
-// data fetcher function and then use it with useAsyncData:
-const getData = async signal => {
-  const res = await axios.get('/data', { signal });
-  return res.data;
-};
-export default function MyComponent() {
-  const [data, status] = useAsyncData(getData, []);
-  return status === "READY" ? <div>{data.name}</div> : null;
-};
-
-// The dependencies are injected into both useAsyncEffect and useAsyncData as
-// arguments so that you can keep the data fetcher function pure:
-const getProfile = async (signal, id) => {
-  const res = await axios.get(`/users/${id}`, { signal });
-  return res.data;
-};
-export default function UserProfile({ id }) {
-  const [profile, status] = useAsyncData(getProfile, [id]);
-  return status === "READY" ? <div>{profile.name}</div> : null;
+  return data ? <Filled /> : <Empty />;
 };
 ```
 
-This library has two main exports (feel free [to propose more](https://github.com/franciscop/use-async/discussions)!):
+It receives a signal that can be used with `fetch()`, axios, etc. to cancel ongoing promises:
+
+```js
+import useAsync from "use-async";
+
+const LoadData = () => {
+  const [data, setData] = useState(null);
+
+  useAsync(async (signal) => {
+    const res = await axios.get("/users", { signal });
+    setState(res.data);
+  }, []);
+
+  return data ? <Filled /> : <Empty />;
+};
+```
+
+This library also has two named exports (feel free [to propose more](https://github.com/franciscop/use-async/discussions)!), the first one behaves the same as `useAsync()`:
+
 - [`useAsyncEffect`](#useAsyncEffect): handle async effects without race conditions
 - [`useAsyncData`](#useAsyncData): handle data fetching operations and dependencies
 
@@ -57,62 +50,75 @@ npm install use-async
 Then import either of the async functions:
 
 ```js
-import { useAsyncEffect } from 'use-async';
+import { useAsyncEffect } from "use-async";
 ```
 
 Finally, use the hook within your component to do data fetching or other async operations:
 
 ```js
-import { useAsyncEffect } from 'use-async';
+import { useAsyncEffect } from "use-async";
 
 export default function UserProfile({ id }) {
   const [profile, setProfile] = useState(null);
 
-  useAsyncEffect(async signal => {
-    const res = await axios.get('/users/' + id, { signal });
-    setProfile(res.data);
-  }, [id]);
+  useAsyncEffect(
+    async (signal) => {
+      const res = await axios.get("/users/" + id, { signal });
+      setProfile(res.data);
+    },
+    [id]
+  );
 
   if (!profile) return <Spinner />;
 
-  return <div><h1>{profile.name}</h1>...</div>;
+  return (
+    <div>
+      <h1>{profile.name}</h1>...
+    </div>
+  );
 }
 ```
 
 ## API
 
 This library has two named exports:
+
 - [`useAsyncEffect`](#useAsyncEffect): handle async effects without race conditions
 - [`useAsyncData`](#useAsyncData): handle data fetching operations and dependencies
 
 Some shared points on both functions:
-- The signature of both is first an *async* function, and second the dependencies array.
-- The *async* function receives as arguments first the signal, and then the spread of the dependencies.
-- The signal will be *aborted* either when the component itself unmounts, or when the dependencies for the hook change.
+
+- The signature of both is first an _async_ function, and second the dependencies array.
+- The _async_ function receives as arguments first the signal, and then the spread of the dependencies.
+- The signal will be _aborted_ either when the component itself unmounts, or when the dependencies for the hook change.
 - `useAsyncData` is a wrapper of `useAsyncEffect` for convenience, to make it easier for fetching data asynchronously to use in the current component.
 - This library solves two major problems with the traditional `useEffect()`: async functions and race conditions. See [this article by Max Rozen](https://maxrozen.com/race-conditions-fetching-data-react-with-useeffect) about one of the main problems this library solves.
 
-> The return of the hooks is different, as well as the expected return from the *async* callbacks. Please read the documentation below for details.
+> The return of the hooks is different, as well as the expected return from the _async_ callbacks. Please read the documentation below for details.
 
 ### `useAsyncEffect()`
 
 This is a similar hook to `useEffect()`, but explicitly designed to work asynchronously and to make it easy to handle race conditions:
 
 ```js
-import { useAsyncEffect } from 'use-async';
+import { useAsyncEffect } from "use-async";
 
 // Easily handle API calls
 const [profile, setProfile] = useState(null);
-useAsyncEffect(async signal => {
-  const data = await getUserProfile(id);
-  if (signal.aborted) return;  // <= Avoid race conditions on the network!
-  setProfile(data);
-}, [id]);
+useAsyncEffect(
+  async (signal) => {
+    const data = await getUserProfile(id);
+    if (signal.aborted) return; // <= Avoid race conditions on the network!
+    setProfile(data);
+  },
+  [id]
+);
 ```
 
 > Note: the above can be simplified even further with useAsyncData() below, but we think it's a very common usage so wanted to give a familiar example to the reader.
 
-The arguments passed to the *async* function inside useAsyncEffect() are:
+The arguments passed to the _async_ function inside useAsyncEffect() are:
+
 1. `signal`: an [AbortSignal](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal) that will be aborted if the component is unmounted or the function becomes stale (when the dependencies change). If the dependencies are an empty array, then it will only indicate when the component is unmounted.
 2. `dep1`: the first dependency from the array of dependencies.
 3. `dep2`: the second dependency from the array of dependencies.
@@ -123,18 +129,24 @@ The `signal` is a proper [AbortSignal instance](https://developer.mozilla.org/en
 ```js
 // Aborts the request if it becomes invalid while ongoing
 const [profile, setProfile] = useState(null);
-useAsyncEffect(async signal => {
-  const res = await axios.get(`/users/${id}`, { signal });
-  setProfile(res.data);
-}, [id]);
+useAsyncEffect(
+  async (signal) => {
+    const res = await axios.get(`/users/${id}`, { signal });
+    setProfile(res.data);
+  },
+  [id]
+);
 
 // Aborts the request if it becomes invalid while ongoing
 const [profile, setProfile] = useState(null);
-useAsyncEffect(async signal => {
-  const res = await fetch(`/api/users/${id}`, { signal });
-  const data = await res.json();
-  setProfile(data);
-}, [id]);
+useAsyncEffect(
+  async (signal) => {
+    const res = await fetch(`/api/users/${id}`, { signal });
+    const data = await res.json();
+    setProfile(data);
+  },
+  [id]
+);
 ```
 
 > It is normally to cancel any ongoing request if you know it's stale. It's normally not done for how hard it used to be compared to the light benefit of avoiding extra requests, but as you can see above with use-async it becomes easier than ever to abort stale requests!
@@ -170,7 +182,6 @@ useAsyncEffect(async signal => {
 }, [id]);
 ```
 
-
 ### `useAsyncData()`
 
 This is a helper for those cases when you are fetching data in the async function and setting it to a local variable in the current component. It includes a state machine to make it even easier:
@@ -199,15 +210,13 @@ export default function MyAsyncComponent({ id }) {
 
   // Whatever the data is and you want to display
   return (
-    <ul>
-      {Array.isArray(data) ? data.map(item => <li>{item}</li>) : null}
-    </ul>
+    <ul>{Array.isArray(data) ? data.map((item) => <li>{item}</li>) : null}</ul>
   );
 }
 ```
 
+The arguments passed to the _async_ function inside useAsyncData() are:
 
-The arguments passed to the *async* function inside useAsyncData() are:
 1. `signal`: an [AbortSignal](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal) that will be aborted if the component is unmounted or the function becomes stale (when the dependencies change). If the dependencies are an empty array, then it will only indicate when the component is unmounted.
 2. `dep1`: the first dependency from the array of dependencies.
 3. `dep2`: the second dependency from the array of dependencies.
@@ -277,8 +286,6 @@ return (
 
 > Note: assuming that if there's no "data", ItemList graciously shows a message
 
-
-
 ## Examples
 
 ### Simple profile fetch
@@ -288,30 +295,39 @@ As we saw before, this is a simple profile fetch that also avoids race condition
 ```js
 // Easily handle API calls
 const [profile, setProfile] = useState(null);
-useAsyncEffect(async signal => {
-  const res = await axios.get(`/users/${id}`);
-  if (signal.aborted) return;  // <= Avoid race conditions on the network!
-  setProfile(res.data);
-}, [id]);
+useAsyncEffect(
+  async (signal) => {
+    const res = await axios.get(`/users/${id}`);
+    if (signal.aborted) return; // <= Avoid race conditions on the network!
+    setProfile(res.data);
+  },
+  [id]
+);
 ```
 
 Since Axios (and `fetch()`) accept the `signal` as an option, the above can also be converted to:
 
 ```js
 const [profile, setProfile] = useState(null);
-useAsyncEffect(async signal => {
-  const res = await axios.get(`/users/${id}`, { signal });
-  setProfile(res.data);
-}, [id]);
+useAsyncEffect(
+  async (signal) => {
+    const res = await axios.get(`/users/${id}`, { signal });
+    setProfile(res.data);
+  },
+  [id]
+);
 ```
 
 We also export `useAsyncData`, which makes the above even easier:
 
 ```js
-const [profile, status] = useAsyncData(async signal => {
-  const res = await axios.get(`/users/${id}`);
-  return res.data;
-}, [id]);
+const [profile, status] = useAsyncData(
+  async (signal) => {
+    const res = await axios.get(`/users/${id}`);
+    return res.data;
+  },
+  [id]
+);
 ```
 
 Finally, the simplest we can do is if we either make axios return simply the data instead of the response (with an interceptor) or we put that as a separated function:
@@ -336,7 +352,7 @@ If we want to do the same with the native `useEffect`, it becomes a lot more cum
 const [profile, setProfile] = useState(null);
 useEffect(() => {
   let isActive = true;
-  axios.get(`/users/${id}`).then(res => {
+  axios.get(`/users/${id}`).then((res) => {
     if (!isActive) return;
     setProfile(res.data);
   });
@@ -352,7 +368,7 @@ For this code, that has the issue that it doesn't even check if the current page
 // How you might be doing it now
 const [state, setState] = useState(null);
 useEffect(() => {
-  axios.get("/pages/" + id).then(res => {
+  axios.get("/pages/" + id).then((res) => {
     setState(res.data);
   });
 }, [id]);
@@ -363,13 +379,15 @@ Easily handle async API calls:
 ```js
 // New way of doing it
 const [state, setState] = useState(null);
-useAsyncEffect(async signal => {
-  const res = await axios.get("/pages/" + id);
-  if (signal.aborted) return;
-  setState(res.data);
-}, [id]);
+useAsyncEffect(
+  async (signal) => {
+    const res = await axios.get("/pages/" + id);
+    if (signal.aborted) return;
+    setState(res.data);
+  },
+  [id]
+);
 ```
-
 
 ### Compare to `@n1ru4l/use-async-effect`
 
@@ -413,14 +431,17 @@ const MyComponent = ({ filter }) => {
   const [data, setData] = useState(null);
 
   // ✅ Signal is already provided by the library
-  useAsyncEffect(async (signal) => {
-    // ✅ More readable code, so easier to follow workflow
-    // ✅ await is simpler than a generator+yield
-    // ✅ signal will cancel if the component is unmounted or the deps change
-    const res = await fetch("/data?filter=" + filter, { signal });
-    const data = await res.json();
-    setData(data);
-  }, [filter]);
+  useAsyncEffect(
+    async (signal) => {
+      // ✅ More readable code, so easier to follow workflow
+      // ✅ await is simpler than a generator+yield
+      // ✅ signal will cancel if the component is unmounted or the deps change
+      const res = await fetch("/data?filter=" + filter, { signal });
+      const data = await res.json();
+      setData(data);
+    },
+    [filter]
+  );
 
   return data ? <RenderData data={data} /> : null;
 };
@@ -433,5 +454,6 @@ We've looked at this and other existing libraries, and found that we could impro
 ## Thanks
 
 Special thanks to:
+
 - Max Rozen's [great article](https://maxrozen.com/race-conditions-fetching-data-react-with-useeffect) on using AbortSignal with useEffect. I had a rough idea on how to proceed, and that article cemented it!
 - `use-async-effect` (to which I contributed the `isMounted()` check) for being what I've been using for a while. It's [what I've learned](https://github.com/rauldeheer/use-async-effect/issues/13) by using it that allowed me to create `use-async`.

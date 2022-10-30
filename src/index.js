@@ -1,18 +1,18 @@
 import { useEffect, useState } from "react";
 
-export function useAsyncEffect(cb, deps = []) {
+function useAsyncEffect(cb, deps = []) {
   useEffect(() => {
     const controller = new AbortController();
     const signal = controller.signal;
     Promise.resolve(cb(signal, ...deps))
-      .then(async res => {
+      .then(async (res) => {
         // Handle any possible cleanup
         if (res && typeof res === "function") {
           if (signal.aborted) res();
           signal.addEventListener("abort", res);
         }
       })
-      .catch(error => {
+      .catch((error) => {
         // These errors are not really errors, it's just that JS handles aborting
         // a promise as an error. Thus, ignore them since they're a normal part
         // of the expected async workflow
@@ -32,11 +32,11 @@ export function useAsyncEffect(cb, deps = []) {
   }, deps);
 }
 
-export function useAsyncData(cb, deps = []) {
+function useAsyncData(cb, deps = []) {
   const [pair, setPair] = useState([undefined, "LOADING"]);
-  useAsyncEffect(async signal => {
+  useAsyncEffect(async (signal) => {
     // Update _only_ if the prev state is not "LOADING"
-    setPair(prev => (prev[1] === "LOADING" ? prev : [prev[0], "LOADING"]));
+    setPair((prev) => (prev[1] === "LOADING" ? prev : [prev[0], "LOADING"]));
     try {
       const data = await cb(signal, ...deps);
       if (signal.aborted) return;
@@ -48,3 +48,6 @@ export function useAsyncData(cb, deps = []) {
   }, deps);
   return pair;
 }
+
+export default useAsyncEffect;
+export { useAsyncEffect, useAsyncData };
