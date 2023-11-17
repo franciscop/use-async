@@ -1,40 +1,29 @@
-# Use Async [![npm install use-async](https://img.shields.io/badge/npm%20install-use--async-blue.svg "install badge")](https://www.npmjs.com/package/use-async) [![test badge](https://github.com/franciscop/use-async/workflows/tests/badge.svg "test badge")](https://github.com/franciscop/use-async/blob/master/.github/workflows/tests.yml) [![gzip size](https://img.badgesize.io/franciscop/use-async/master/index.min.js.svg?compression=gzip "gzip badge")](https://github.com/franciscop/use-async/blob/master/index.min.js)
+# Use Async [![npm install use-async](https://img.shields.io/badge/npm%20install-use--async-blue.svg "install badge")](https://www.npmjs.com/package/use-async) [![test badge](https://github.com/franciscop/use-async/workflows/tests/badge.svg "test badge")](https://github.com/franciscop/use-async/blob/master/.github/workflows/tests.yml) [![gzip size](https://img.badgesize.io/franciscop/use-async/master/src/index.js.svg?compression=gzip "gzip badge")](https://github.com/franciscop/use-async/blob/master/src/index.js)
 
 Like useEffect, but async for ease of use:
 
 ```js
-import useAsync from "use-async";
+import { useAsyncEffect } from "use-async";
 
-const LoadData = () => {
-  const [data, setData] = useState(null);
-
-  useAsync(async () => {
-    const info = await someAsyncOp();
-    setState(info);
-  }, [id]);
-
-  return data ? <Filled /> : <Empty />;
-};
+// A React hook, so follow usual React Hook rules:
+useAsyncEffect(async () => {
+  const info = await someAsyncOp();
+  setState(info);
+}, [id]);
 ```
 
-It receives a signal that can be used with `fetch()`, axios, etc. to cancel ongoing promises:
+The effect receives a `signal` that can be used with `fetch()`, axios, etc. to cancel ongoing promises:
 
 ```js
-import useAsync from "use-async";
+import { useAsyncEffect } from "use-async";
 
-const LoadData = () => {
-  const [data, setData] = useState(null);
-
-  useAsync(async (signal) => {
-    const res = await axios.get("/users", { signal });
-    setState(res.data);
-  }, []);
-
-  return data ? <Filled /> : <Empty />;
-};
+useAsyncEffect(async (signal) => {
+  const res = await axios.get("/users", { signal });
+  setState(res.data);
+}, []);
 ```
 
-This library also has two named exports (feel free [to propose more](https://github.com/franciscop/use-async/discussions)!), the first one behaves the same as `useAsync()`:
+This library has two named exports (feel free [to propose more](https://github.com/franciscop/use-async/discussions)!):
 
 - [`useAsyncEffect`](#useAsyncEffect): handle async effects without race conditions
 - [`useAsyncData`](#useAsyncData): handle data fetching operations and dependencies
@@ -90,7 +79,7 @@ Some shared points on both functions:
 
 - The signature of both is first an _async_ function, and second the dependencies array.
 - The _async_ function receives as arguments first the signal, and then the spread of the dependencies.
-- The signal will be _aborted_ either when the component itself unmounts, or when the dependencies for the hook change.
+- The signal will be _aborted_ either when the component itself unmounts, or when the dependencies for the hook change. AbortErrors are automatically catched so you don't need to worry about _those_.
 - `useAsyncData` is a wrapper of `useAsyncEffect` for convenience, to make it easier for fetching data asynchronously to use in the current component.
 - This library solves two major problems with the traditional `useEffect()`: async functions and race conditions. See [this article by Max Rozen](https://maxrozen.com/race-conditions-fetching-data-react-with-useeffect) about one of the main problems this library solves.
 
@@ -124,7 +113,7 @@ The arguments passed to the _async_ function inside useAsyncEffect() are:
 3. `dep2`: the second dependency from the array of dependencies.
 4. etc.
 
-The `signal` is a proper [AbortSignal instance](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal), which both `fetch()` and `axios()` accept out of the box. This means you can cancel ongoing requests that have become stale/unwanted:
+The `signal` is a standard [AbortSignal instance](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal), which both `fetch()` and `axios()` accept out of the box. This means you can cancel ongoing requests that have become stale/unwanted:
 
 ```js
 // Aborts the request if it becomes invalid while ongoing

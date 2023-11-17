@@ -8,7 +8,7 @@ function useAsyncEffect(cb, deps = []) {
       .then(async (res) => {
         // Handle any possible cleanup
         if (res && typeof res === "function") {
-          if (signal.aborted) res();
+          if (signal.aborted) return res();
           signal.addEventListener("abort", res);
         }
       })
@@ -50,4 +50,4 @@ function useAsyncData(cb, deps = []) {
 }
 
 export default useAsyncEffect;
-export { useAsyncEffect, useAsyncData };
+export { useAsyncData, useAsyncEffect };
