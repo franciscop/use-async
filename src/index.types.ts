@@ -39,6 +39,19 @@ useAsyncEffect(async (signal) => {
   const [out, status] = useAsyncData(async () => {}, []);
   console.log(out, status);
 }
+// Types
+{
+  const [out, status] = useAsyncData<number>(() => 5, []);
+  console.log(out, status);
+}
+{
+  const [out, status] = useAsyncData<string>(() => "hello", []);
+  console.log(out, status);
+}
+{
+  const [out, status] = useAsyncData<boolean>(() => true, []);
+  console.log(out, status);
+}
 // Deps
 {
   const [out, status] = useAsyncData(() => {}, []);
