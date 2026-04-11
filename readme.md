@@ -1,448 +1,582 @@
-# Use Async [![npm install use-async](https://img.shields.io/badge/npm%20install-use--async-blue.svg "install badge")](https://www.npmjs.com/package/use-async) [![test badge](https://github.com/franciscop/use-async/workflows/tests/badge.svg "test badge")](https://github.com/franciscop/use-async/blob/master/.github/workflows/tests.yml) [![gzip size](https://img.badgesize.io/franciscop/use-async/master/src/index.js.svg?compression=gzip "gzip badge")](https://github.com/franciscop/use-async/blob/master/src/index.js)
+# use-async [![npm install use-async](https://img.shields.io/badge/npm%20install-use--async-blue.svg "install badge")](https://www.npmjs.com/package/use-async) [![test badge](https://github.com/franciscop/use-async/workflows/tests/badge.svg "test badge")](https://github.com/franciscop/use-async/blob/master/.github/workflows/tests.yml)
 
-Like useEffect, but async for ease of use:
+A Hook for all your async operations in React. Use it like a basic `useAsyncEffect()`, all the way to more complex usecases like returning data, data refresh, etc.
 
-```js
-import { useAsyncEffect } from "use-async";
-
-// A React hook, so follow usual React Hook rules:
-useAsyncEffect(async () => {
-  const info = await someAsyncOp();
-  setState(info);
-}, [id]);
-```
-
-The effect receives a `signal` that can be used with `fetch()`, axios, etc. to cancel ongoing promises:
-
-```js
-import { useAsyncEffect } from "use-async";
-
-useAsyncEffect(async (signal) => {
-  const res = await axios.get("/users", { signal });
-  setState(res.data);
+```ts
+// Basic usage, like useEffect() + async
+useAsync(async (signal) => {
+  const res = await axios.get("/users/", { signal });
+  setUsers(res.data);
 }, []);
 ```
 
-This library has two named exports (feel free [to propose more](https://github.com/franciscop/use-async/discussions)!):
-
-- [`useAsyncEffect`](#useAsyncEffect): handle async effects without race conditions
-- [`useAsyncData`](#useAsyncData): handle data fetching operations and dependencies
-
-## Getting Started
-
-First install the library in your React (16.8+) project:
-
+<detail><summary>Example without `useAsync`</summary>
+```ts
+// Equivalent without it:
+useEffect(() => {
+  const ctrl = new AbortController();
+  (async () => {
+    const res = await axios.get("/users/", { signal });
+    setUsers(res.data);
+  })();
+  return () => {
+    if (!ctrl.aborted) ctrl.abort();
+  };
+}, []);
 ```
-npm install use-async
+</detail>
+
+For data fetching you can use the return value of `useAsync()` directly to get the state of the operation. This will automatically retrigger when the `id` changes, cancelling the previous `signal`:
+
+```ts
+import useAsync from "use-async";
+
+const { data, error, loading } = useAsync(async (signal) => {
+  const res = await axios.get(`/users/${id}`, { signal });
+  return res.data;
+}, [id]);
+
+if (error) // ...
+if (loading) // ...
+// ...
 ```
 
-Then import either of the async functions:
+Since this function can be defined to depend only on the arguments you can often extract the operations in a pure function, and add nice types:
 
-```js
-import { useAsyncEffect } from "use-async";
+```ts
+const getUser = async (signal, id) => {
+  const res = await axios.get(`/users/${id}`, { signal });
+  return res.data;
+};
+
+const { data, error, loading } = useAsync<User>(getUser, [id]);
 ```
 
-Finally, use the hook within your component to do data fetching or other async operations:
 
-```js
-import { useAsyncEffect } from "use-async";
+## API
 
-export default function UserProfile({ id }) {
-  const [profile, setProfile] = useState(null);
+This is the full definition of the API, but most often you won't need even half of the options. Go to examples to see how to do the simple and more complex operations:
 
-  useAsyncEffect(
-    async (signal) => {
-      const res = await axios.get("/users/" + id, { signal });
-      setProfile(res.data);
-    },
-    [id]
-  );
+```ts
+const { data, error, loading, refresh, update, abort } = useAsync<DataType>(async (signal, dep1, dep2) => {
+  // ...
+}, deps);
+```
 
-  if (!profile) return <Spinner />;
+### `data`
 
+The returned value from the callback with optional types as `T | undefined`. It's `undefined` on the initial load:
+
+```tsx
+const { data, error, loading } = useAsync<User>(async (signal, id) => {
+  const res = await axios.get<User>(`/users/${id}`, { signal });
+  return res.data;
+}, [id]);
+
+if (loading) return <Spinner />;
+if (error) return <ErrorMessage />;
+if (data) // ...
+```
+
+During a re-fetch (dependencies change, or `refresh()` is called), the previous value is preserved until the callback finishes. This means that you can use two loading methods, either a simple one with guards (as seen above), or one where you preserve the previous data and show a "refreshing..." indicator while reloading it:
+
+```tsx
+function UserList () {
+  const { data, refresh } = useAsync<User[]>(async (signal) => {
+    const res = await axios.get<User[]>("/users/", { signal });
+    return res.data;
+  }, []);
+  
+  const onAdd = async (newUser: User) => {
+    await api.post('/users', user);
+    // Trigger an update
+    await refresh();
+  };
+  
   return (
     <div>
-      <h1>{profile.name}</h1>...
+      <AddUserModal onAdd={onAdd} />
+      {loading ? (data ? <RefreshingNotice /> : <InitialLoading />) : null}
+      {error ? (data ? <FailedToRefresh /> : <InitialError />) : null}
+      {data ? data.map(user => <UserCard {...user} />) : null}
     </div>
   );
 }
 ```
 
-## API
+### error
 
-This library has two named exports:
+The caught error, typed as `Error | undefined`. It is `undefined` initially, while loading and after a successful resolution. Can be set at the same time as `data` when a re-fetch fails `data` holds the last successful value.
 
-- [`useAsyncEffect`](#useAsyncEffect): handle async effects without race conditions
-- [`useAsyncData`](#useAsyncData): handle data fetching operations and dependencies
+```tsx
+const { data, error, refresh } = useAsync(fetchItems, []);
 
-Some shared points on both functions:
-
-- The signature of both is first an _async_ function, and second the dependencies array.
-- The _async_ function receives as arguments first the signal, and then the spread of the dependencies.
-- The signal will be _aborted_ either when the component itself unmounts, or when the dependencies for the hook change. AbortErrors are automatically catched so you don't need to worry about _those_.
-- `useAsyncData` is a wrapper of `useAsyncEffect` for convenience, to make it easier for fetching data asynchronously to use in the current component.
-- This library solves two major problems with the traditional `useEffect()`: async functions and race conditions. See [this article by Max Rozen](https://maxrozen.com/race-conditions-fetching-data-react-with-useeffect) about one of the main problems this library solves.
-
-> The return of the hooks is different, as well as the expected return from the _async_ callbacks. Please read the documentation below for details.
-
-### `useAsyncEffect()`
-
-This is a similar hook to `useEffect()`, but explicitly designed to work asynchronously and to make it easy to handle race conditions:
-
-```js
-import { useAsyncEffect } from "use-async";
-
-// Easily handle API calls
-const [profile, setProfile] = useState(null);
-useAsyncEffect(
-  async (signal) => {
-    const data = await getUserProfile(id);
-    if (signal.aborted) return; // <= Avoid race conditions on the network!
-    setProfile(data);
-  },
-  [id]
+return (
+  <div>
+    {error && <Banner>Failed to refresh: {error.message}</Banner>}
+    <ItemList data={data} />
+    <button onClick={refresh}>Retry</button>
+  </div>
 );
 ```
 
-> Note: the above can be simplified even further with useAsyncData() below, but we think it's a very common usage so wanted to give a familiar example to the reader.
+### loading
 
-The arguments passed to the _async_ function inside useAsyncEffect() are:
+`true` while the callback is running, including during re-fetches triggered by dep changes or `refresh()`. Can be `true` while `data` still holds a previous (stale) value:
 
-1. `signal`: an [AbortSignal](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal) that will be aborted if the component is unmounted or the function becomes stale (when the dependencies change). If the dependencies are an empty array, then it will only indicate when the component is unmounted.
-2. `dep1`: the first dependency from the array of dependencies.
-3. `dep2`: the second dependency from the array of dependencies.
-4. etc.
+```ts
+const { data, loading } = useAsync(fetchItems, []);
 
-The `signal` is a standard [AbortSignal instance](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal), which both `fetch()` and `axios()` accept out of the box. This means you can cancel ongoing requests that have become stale/unwanted:
+// Swap entire view for spinner:
+if (loading) return <Spinner />;
 
-```js
-// Aborts the request if it becomes invalid while ongoing
-const [profile, setProfile] = useState(null);
-useAsyncEffect(
-  async (signal) => {
-    const res = await axios.get(`/users/${id}`, { signal });
-    setProfile(res.data);
-  },
-  [id]
-);
-
-// Aborts the request if it becomes invalid while ongoing
-const [profile, setProfile] = useState(null);
-useAsyncEffect(
-  async (signal) => {
-    const res = await fetch(`/api/users/${id}`, { signal });
-    const data = await res.json();
-    setProfile(data);
-  },
-  [id]
-);
+// Or overlay spinner on stale data:
+return <Page loading={loading}><ItemList data={data} /></Page>;
 ```
 
-> It is normally to cancel any ongoing request if you know it's stale. It's normally not done for how hard it used to be compared to the light benefit of avoiding extra requests, but as you can see above with use-async it becomes easier than ever to abort stale requests!
+### refresh()
 
-You can add a cleanup function in two different ways: if the return value is a function, or adding an event listener to `signal`. The former is the easiest and most straightforward when you have a single async operation, but the latter might simplify your code if you have a complex series of async operations:
+Re-runs the callback with the latest deps. Returns a `Promise<void>` that resolves when the new data is ready, so you can sequence operations:
 
-```js
-// Simple example: adding a single side effect
-useAsyncEffect(async signal => {
-  const res1 = await op1();
-  if (signal.aborted) return;
-  const id = setTimeout(() => {...}, 1000);
-  return () => {
-    clearTimeout(id);
-  };
-}, [id]);
+```ts
+const { refresh } = useAsync(fetchItems, []);
 
-// Complex example: adding multiple side effects and cleanups
-useAsyncEffect(async signal => {
-  const res1 = await op1();
-  if (signal.aborted) return;
-  const id1 = setTimeout(() => {
-    ...
-  }, 1000);
-  signal.addEventListener("abort", () => clearTimeout(id1));
-
-  const res2 = await op2();
-  if (signal.aborted) return;
-  const id2 = setTimeout(() => {
-    ...
-  }, 2000);
-  signal.addEventListener("abort", () => clearTimeout(id2));
-}, [id]);
-```
-
-### `useAsyncData()`
-
-This is a helper for those cases when you are fetching data in the async function and setting it to a local variable in the current component. It includes a state machine to make it even easier:
-
-```js
-import { useAsyncData } from 'use-async';
-
-const myAsyncOperation = async (signal, id) => {...};
-
-export default function MyAsyncComponent({ id }) {
-  const [data, status] = useAsyncData(myAsyncOperation, [id]);
-
-  if (status === "LOADING") return <Spinner />;
-  if (status === "ERROR") return <div>{data.message}</div>;
-
-  // Whatever the data is and you want to display
-  return <div>{data.name}</div>;
-}
-```
-
-It simplifies the fetching of data and the loading around it. The state machine can be completely ignored if you want a quick and easy usage, you just need to check that the data has the proper structure:
-
-```js
-export default function MyAsyncComponent({ id }) {
-  const [data] = useAsyncData(myAsyncOperation, [id]);
-
-  // Whatever the data is and you want to display
-  return (
-    <ul>{Array.isArray(data) ? data.map((item) => <li>{item}</li>) : null}</ul>
-  );
-}
-```
-
-The arguments passed to the _async_ function inside useAsyncData() are:
-
-1. `signal`: an [AbortSignal](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal) that will be aborted if the component is unmounted or the function becomes stale (when the dependencies change). If the dependencies are an empty array, then it will only indicate when the component is unmounted.
-2. `dep1`: the first dependency from the array of dependencies.
-3. `dep2`: the second dependency from the array of dependencies.
-4. etc.
-
-So, the dependencies will be passed as arguments to this callback. This makes it a easier to extract the callback as a different function if wanted, specially since the data will be set when returned from the function:
-
-```js
-import { useAsyncData } from "use-async";
-
-// Extract it into a single function accepting the signal and the deps as args.
-const getUserProfile = async (signal, id) => {
-  const res = await fetch(`/users/${id}`, { signal });
-  const data = await res.json();
-  return data;
+const handleAdd = async (item) => {
+  await api.post("/items", item);
+  await refresh();
+  showToast("Done!");
 };
+```
 
-const MyComponent = ({ id }) => {
-  // Provide the callback and deps; which are injected as args after "signal"
-  const [profile] = useAsyncData(getUserProfile, [id]);
+### update(value | fn)
 
+Directly sets `data` without re-running the callback. Accepts either a value or an updater function that receives the previous value:
+
+```ts
+const { update } = useAsync(fetchItems, []);
+
+// Set directly:
+update(newItems);
+
+// Or derive from previous:
+update((prev) => prev.map((item) =>
+  item.id === id ? { ...item, done: true } : item
+));
+```
+
+
+### abort()
+
+Cancels the in-flight request and sets `loading` to `false`, preserving whatever `data` was there before. The aborted callback's state updates are silently ignored. Any pending `await refresh()` promises also resolve immediately.
+
+Useful for giving users a cancel button on slow operations:
+
+```tsx
+const { data, loading, abort } = useAsync(async (signal) => {
+  const res = await axios.get("/reports/generate", { signal });
+  return res.data;
+}, []);
+
+return (
+  <div>
+    {loading && <button onClick={abort}>Cancel</button>}
+    {data && <ReportView report={data} />}
+  </div>
+);
+```
+
+Calling `abort()` when nothing is in flight is a no-op.
+
+### callback
+
+An async function (or regular function returning a value). Receives the `signal` as the first argument, followed by the spread of `deps`. Errors thrown inside are caught and stored in `error`.
+
+```ts
+useAsync(async (signal, id) => {
+  const res = await axios.get(`/users/${id}`, { signal });
+  return res.data;
+}, [id]);
+```
+
+### signal
+
+An [AbortSignal](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal) passed as the first argument to the callback. It aborts when the component unmounts or the deps change, cancelling any in-flight request automatically. Pass it to `axios`, `fetch`, etc.:
+
+```ts
+useAsync(async (signal) => {
+  const res = await axios.get("/users", { signal });
+  return res.data;
+}, []);
+```
+
+To run cleanup after an async step, use `signal.addEventListener("abort", ...)`:
+
+```ts
+useAsync(async (signal) => {
+  const res = await connectToStream();
+  signal.addEventListener("abort", () => res.close());
   // ...
-};
+}, []);
 ```
 
-The default value should be done by using the destructuring default value:
 
-```js
-const [data = "myDefaultValue", status] = useAsyncData(...);
+### dependencies
+
+The dependency array, same as `useEffect`. The hook re-runs whenever any value changes. Defaults to `[]`. Each dep is also passed as an argument to the callback, so you can extract it as a standalone function:
+
+```ts
+const getUser = async (signal: AbortSignal, id: number, userId: number) => { ... };
+
+useAsync(getUser, [id, userId]);
 ```
-
-The `"LOADING"` status might be shown even when `data` is defined. This happens when the previous data is stale, and it gives you enough flexibility to decide what to do while loading the new data. You can hide the stale data, dim it out, overlay a loading indicator over it, etc.
-
-Some examples on how to deal with the stale data while loading new data:
-
-```js
-const [data, status] = useAsyncData(...);
-
-// Example 1 - replace the whole page for a spinner while loading new data
-if (status === "LOADING") return <Spinner />;
-return <ItemList data={data} />;
-
-// Example 2 - replace only a part of the page for a spinner
-return (
-  <div>
-    {status === "LOADING" ? <Spinner /> : <ItemList data={data} />}
-  </div>
-);
-
-// Example 3 - overlay a spinner on top of the stale data
-return (
-  <Page overlaySpinner={status === "LOADING"}>
-    <ItemList data={data} />
-  </Page>
-);
-
-// Example 4 - show a small spinner on top, similar to pulling down on Twitter
-return (
-  <div>
-    {status === "LOADING" && <SmallSpinner />}
-    <ItemList data={data} />
-  </div>
-);
-
-// etc
-```
-
-> Note: assuming that if there's no "data", ItemList graciously shows a message
 
 ## Examples
 
-### Simple profile fetch
+### Simple async effect
 
-As we saw before, this is a simple profile fetch that also avoids race conditions:
+When you don't need the return value, use it like `useEffect` but async. The signal aborts automatically when the component unmounts or when a dep changes, so stale requests never cause state updates on an unmounted component:
 
-```js
-// Easily handle API calls
-const [profile, setProfile] = useState(null);
-useAsyncEffect(
-  async (signal) => {
-    const res = await axios.get(`/users/${id}`);
-    if (signal.aborted) return; // <= Avoid race conditions on the network!
-    setProfile(res.data);
-  },
-  [id]
-);
+```ts
+useAsync(async (signal) => {
+  const res = await axios.get(`/users/${id}`, { signal });
+  setProfile(res.data);
+}, [id]);
 ```
 
-Since Axios (and `fetch()`) accept the `signal` as an option, the above can also be converted to:
+Without `useAsync`, this requires manual boilerplate to get right:
 
-```js
-const [profile, setProfile] = useState(null);
-useAsyncEffect(
-  async (signal) => {
-    const res = await axios.get(`/users/${id}`, { signal });
+```ts
+useEffect(() => {
+  const ctrl = new AbortController();
+  (async () => {
+    const res = await axios.get(`/users/${id}`, { signal: ctrl.signal });
+    if (ctrl.signal.aborted) return; // guard against stale updates
     setProfile(res.data);
-  },
-  [id]
-);
+  })();
+  return () => ctrl.abort();
+}, [id]);
 ```
 
-We also export `useAsyncData`, which makes the above even easier:
+### Data fetching
 
-```js
-const [profile, status] = useAsyncData(
-  async (signal) => {
-    const res = await axios.get(`/users/${id}`);
+Return the value from the callback and destructure `data`, `error`, and `loading`. The hook handles the full lifecycle with no extra state management:
+
+```tsx
+type User = { id: number; name: string; email: string };
+
+export default function UserProfile({ id }: { id: number }) {
+  const { data, error, loading } = useAsync(async (signal, id) => {
+    const res = await axios.get<User>(`/users/${id}`, { signal });
     return res.data;
-  },
-  [id]
-);
+  }, [id]);
+
+  if (loading) return <Spinner />;
+  if (error) return <div>Error: {error.message}</div>;
+
+  return (
+    <div>
+      <h1>{data.name}</h1>
+      <p>{data.email}</p>
+    </div>
+  );
+}
 ```
 
-Finally, the simplest we can do is if we either make axios return simply the data instead of the response (with an interceptor) or we put that as a separated function:
+### Extracting the callback
 
-```js
-// Outside our component
-const getProfile = async (signal, id) => {
-  const res = await axios.get(`/users/${id}`);
+Since deps are passed as arguments to the callback, it depends only on its parameters. This makes it easy to pull out as a standalone, reusable, and testable function:
+
+```ts
+// Defined outside the component. No closures, easy to unit test
+const getUser = async (signal: AbortSignal, id: number): Promise<User> => {
+  const res = await axios.get<User>(`/users/${id}`, { signal });
   return res.data;
 };
 
-export default function UserProfile({ id }) {
-  const [profile, status] = useAsyncData(getProfile, [id]);
-
-  return (...);
-};
+export default function UserProfile({ id }: { id: number }) {
+  const { data, error, loading } = useAsync(getUser, [id]);
+  // ...
+}
 ```
 
-If we want to do the same with the native `useEffect`, it becomes a lot more cumbersome since now we need to track the status manually:
+### Search with race condition prevention
 
-```js
-const [profile, setProfile] = useState(null);
-useEffect(() => {
-  let isActive = true;
-  axios.get(`/users/${id}`).then((res) => {
-    if (!isActive) return;
-    setProfile(res.data);
-  });
-  return () => {
-    isActive = false;
+When `query` changes on every keystroke, each keystroke fires a new request. Without cancellation, slow responses from earlier keystrokes can arrive after newer ones, showing the wrong results. The signal handles this automatically, when `query` changes, the previous request is aborted before the new one starts:
+
+```tsx
+export default function UserSearch() {
+  const [query, setQuery] = useState("");
+
+  const { data: results, loading } = useAsync(async (signal, query) => {
+    if (!query) return [];
+    const res = await axios.get<User[]>(`/search?q=${query}`, { signal });
+    return res.data;
+  }, [query]);
+
+  return (
+    <div>
+      <input value={query} onChange={(e) => setQuery(e.target.value)} />
+      {loading && <Spinner />}
+      {results?.map((user) => <UserRow key={user.id} user={user} />)}
+    </div>
+  );
+}
+```
+
+No debouncing library needed for correctness, even if you fire 10 requests rapidly, only the last one's result will ever be set as `data`. Debouncing is still useful to reduce server load, but it's no longer required for correctness.
+
+### Refresh after mutation
+
+`refresh()` returns a `Promise` that resolves only when the new data has been fetched and stored. This lets you sequence a mutation and a reload without managing any extra loading state:
+
+```tsx
+export default function TodoList() {
+  const { data: todos, refresh } = useAsync(async (signal) => {
+    const res = await axios.get<Todo[]>("/todos", { signal });
+    return res.data;
+  }, []);
+
+  const handleAdd = async (text: string) => {
+    // POST the new item
+    await axios.post("/todos", { text });
+    // refresh() re-runs the callback; awaiting it means the list is
+    // already up-to-date by the time the next line runs
+    await refresh();
+    showToast("Added!");
   };
-}, [id]);
+
+  const handleDelete = async (id: number) => {
+    await axios.delete(`/todos/${id}`);
+    await refresh();
+  };
+
+  return (
+    <div>
+      <AddTodoForm onAdd={handleAdd} />
+      {todos?.map((todo) => (
+        <TodoRow key={todo.id} todo={todo} onDelete={handleDelete} />
+      ))}
+    </div>
+  );
+}
 ```
 
-For this code, that has the issue that it doesn't even check if the current page is still mounted before killing it:
+### Optimistic update with rollback
 
-```js
-// How you might be doing it now
-const [state, setState] = useState(null);
-useEffect(() => {
-  axios.get("/pages/" + id).then((res) => {
-    setState(res.data);
-  });
-}, [id]);
+`update()` sets `data` immediately so the UI feels instant. If the request fails, roll back to the previous value by re-running the callback with `refresh()`. The combination of the two gives you the full optimistic update pattern:
+
+```tsx
+export default function TodoList() {
+  const { data: todos, update, refresh } = useAsync(async (signal) => {
+    const res = await axios.get<Todo[]>("/todos", { signal });
+    return res.data;
+  }, []);
+
+  const handleToggle = async (id: number) => {
+    // Snapshot current state for rollback
+    const previous = todos;
+
+    // Apply optimistically. UI updates immediately, no spinner
+    update((prev) => prev.map((t) =>
+      t.id === id ? { ...t, done: !t.done } : t
+    ));
+
+    try {
+      await axios.post(`/todos/${id}/toggle`);
+    } catch {
+      // Server rejected the change, roll back to the last known good state
+      update(previous);
+      showToast("Failed to update, reverted.");
+    }
+  };
+
+  return todos?.map((todo) => (
+    <TodoRow key={todo.id} todo={todo} onToggle={handleToggle} />
+  ));
+}
 ```
 
-Easily handle async API calls:
+### Pagination / load more
 
-```js
-// New way of doing it
-const [state, setState] = useState(null);
-useAsyncEffect(
-  async (signal) => {
-    const res = await axios.get("/pages/" + id);
-    if (signal.aborted) return;
-    setState(res.data);
-  },
-  [id]
+Use `update(fn)` to accumulate pages rather than replace them. The dep tracks the current page number; each time it increments, the callback fetches that page and appends it to the existing list:
+
+```tsx
+export default function PostFeed() {
+  const [page, setPage] = useState(1);
+
+  const { data: posts, loading } = useAsync(async (signal, page) => {
+    const res = await axios.get<Post[]>(`/posts?page=${page}`, { signal });
+    const newPosts = res.data;
+
+    // For page 1 return directly; for subsequent pages, append to previous
+    if (page === 1) return newPosts;
+
+    // update() gives us the previous value so we can merge
+    return (prev: Post[] | undefined) => [...(prev ?? []), ...newPosts];
+  }, [page]);
+
+  return (
+    <div>
+      {posts?.map((post) => <PostCard key={post.id} post={post} />)}
+      <button onClick={() => setPage((p) => p + 1)} disabled={loading}>
+        {loading ? "Loading..." : "Load more"}
+      </button>
+    </div>
+  );
+}
+```
+
+### With statux
+
+[statux](https://statux.dev) is a global state manager. The natural pattern is to load data into the store once on mount, then have any component read from it. `useAsync` replaces the manual `useEffect` + fetch pattern the statux docs suggest:
+
+```tsx
+import { Store, useStore } from "statux";
+import useAsync from "use-async";
+
+// In a top-level component, fetch once and store globally
+function App() {
+  const [, setBooks] = useStore("books");
+
+  useAsync(async (signal) => {
+    const res = await api.get("/books", { signal });
+    setBooks(res.data);
+  }, []);
+
+  return <BookList />;
+}
+
+// Any child can read from the store — no prop drilling, no re-fetch
+function BookList() {
+  const [books] = useStore("books");
+  return books?.map((book) => <BookCard key={book.id} book={book} />);
+}
+
+// Root
+<Store books={[]}>
+  <App />
+</Store>
+```
+
+For user-specific data that should reload when the logged-in user changes, pass the user id as a dep:
+
+```tsx
+function App() {
+  const userId = useSelector("user.id");
+  const [, setProfile] = useStore("profile");
+
+  useAsync(async (signal, userId) => {
+    if (!userId) return;
+    const res = await api.get(`/users/${userId}`, { signal });
+    setProfile(res.data);
+  }, [userId]);
+}
+```
+
+### With form-mate
+
+[form-mate](https://form-mate.dev) handles form submission and its loading/error state. Combined with `useAsync`, you get the full data lifecycle: load data into the form, submit changes, and refresh the list — all without managing extra state:
+
+```tsx
+import Form, { FormLoading, FormError } from "form-mate";
+import useAsync from "use-async";
+
+export default function TodoList() {
+  const { data: todos, update } = useAsync(async (signal) => {
+    const res = await api.get("/todos", { signal });
+    return res.data as Todo[];
+  }, []);
+
+  const handleSubmit = async ({ title }: { title: string }) => {
+    const todo = await api.post("/todos", { title });
+    update(prev => [todo, ...prev]);
+  };
+
+  return (
+    <div>
+      <Form onSubmit={handleSubmit} autoReset>
+        <input name="title" placeholder="New todo" required />
+        <button>Add</button>
+        <FormLoading>Adding...</FormLoading>
+        <FormError />
+      </Form>
+
+      {todos?.map((todo) => <TodoRow key={todo.id} todo={todo} />)}
+    </div>
+  );
+}
+```
+
+`form-mate` handles the submission loading/error state; `useAsync` handles the list loading/error state — each does its job independently, and `update()` is the single connection point between them.
+
+If you prefer to trigger a full server-side refresh (other users in the app, etc), could do so with a `await refresh()` better:
+
+```ts
+const handleSubmit = async ({ title }: { title: string }) => {
+  await api.post("/todos", { title });
+  await refresh();
+};
+````
+
+### With fch
+
+[fch](https://github.com/franciscop/fetch) is a tiny fetch wrapper that returns the parsed body directly (no `.json()` unwrapping, no `.data` property). It also throws automatically on non-2xx responses, which aligns perfectly with how `useAsync` captures errors:
+
+```tsx
+import fch from "fch";
+import useAsync from "use-async";
+
+// Create a configured instance once
+const api = fch.create({ baseUrl: "https://api.example.com" });
+function getUser (signal: AbortSignal, id: number): User {
+  return api.get(`/users/${id}`, { signal });
+};
+
+export default function UserProfile({ id }: { id: number }) {
+  // fch returns the body directly — no unwrapping needed
+  const { data, error, loading } = useAsync(getUser, [id]);
+
+  if (loading) return <Spinner />;
+  if (error) return <div>{error.message}</div>;
+  return <h1>{data.name}</h1>;
+}
+```
+
+Since `fch` throws on non-2xx responses, errors from the server land in `error` automatically. For mutations, `fch.post` / `fch.del` pair cleanly with `refresh()`:
+
+```tsx
+const { data: items, refresh } = useAsync(
+  (signal) => api.get("/items", { signal }),
+  []
 );
-```
 
-### Compare to `@n1ru4l/use-async-effect`
-
-This library for use-async-effect gets some bits right (we should support generators at some point!), but IMHO it still gives you too many shotguns to shot your foot with. Let's compare their clean example given here with our code:
-
-```js
-// After 🤩
-import useAsyncEffect from "@n1ru4l/use-async-effect";
-
-const MyComponent = ({ filter }) => {
-  const [data, setData] = useState(null);
-
-  useAsyncEffect(
-    function* (onCancel, c) {
-      const controller = new AbortController();
-
-      onCancel(() => controller.abort());
-
-      const data = yield* c(
-        fetch("/data?filter=" + filter, {
-          signal: controller.signal,
-        }).then((res) => res.json())
-      );
-
-      setData(data);
-    },
-    [filter]
-  );
-
-  return data ? <RenderData data={data} /> : null;
+const handleDelete = async (id: number) => {
+  await api.del(`/items/${id}`);
+  await refresh();
 };
 ```
 
-Our solution of the same problem is this:
+### Cleanup via signal
 
-```js
-// ✅ Name easier to remember
-import { useAsyncEffect } from "use-async";
+For subscriptions or any resource that must be explicitly released, use `signal.addEventListener("abort", ...)`. This runs the cleanup whenever the component unmounts or the deps change, even if it happens mid-async:
 
-const MyComponent = ({ filter }) => {
-  const [data, setData] = useState(null);
+```tsx
+export default function LiveFeed({ channelId }: { channelId: string }) {
+  const [messages, setMessages] = useState<Message[]>([]);
 
-  // ✅ Signal is already provided by the library
-  useAsyncEffect(
-    async (signal) => {
-      // ✅ More readable code, so easier to follow workflow
-      // ✅ await is simpler than a generator+yield
-      // ✅ signal will cancel if the component is unmounted or the deps change
-      const res = await fetch("/data?filter=" + filter, { signal });
-      const data = await res.json();
-      setData(data);
-    },
-    [filter]
-  );
+  useAsync(async (signal, channelId) => {
+    const source = new EventSource(`/channels/${channelId}/events`);
 
-  return data ? <RenderData data={data} /> : null;
-};
+    // Clean up the connection when channelId changes or component unmounts
+    signal.addEventListener("abort", () => source.close());
+
+    source.onmessage = (e) => {
+      // The signal is already aborted by the time this fires on a stale
+      // channel. The EventSource is closed so this will never run
+      setMessages((prev) => [...prev, JSON.parse(e.data)]);
+    };
+  }, [channelId]);
+
+  return messages.map((msg) => <MessageRow key={msg.id} message={msg} />);
+}
 ```
-
-The implementation with our library (`use-async`) is half of the lines of code (10 vs 18) while keeping your code legible and straightforward.
-
-We've looked at this and other existing libraries, and found that we could improve meaningful upon them. That's why we decided to launch `use-async` on 2021 instead of using one of the existing ones.
-
-## Thanks
-
-Special thanks to:
-
-- Max Rozen's [great article](https://maxrozen.com/race-conditions-fetching-data-react-with-useeffect) on using AbortSignal with useEffect. I had a rough idea on how to proceed, and that article cemented it!
-- `use-async-effect` (to which I contributed the `isMounted()` check) for being what I've been using for a while. It's [what I've learned](https://github.com/rauldeheer/use-async-effect/issues/13) by using it that allowed me to create `use-async`.
