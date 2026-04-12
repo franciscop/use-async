@@ -2,12 +2,18 @@
   "name": "use-async",
   "version": "2.0.1",
   "description": "React hooks to make handling async operations a breeze",
-  "homepage": "https://github.com/franciscop/use-async.git",
+  "homepage": "https://use-async.dev/",
   "repository": "https://github.com/franciscop/use-async.git",
-  "bugs": "https://github.com/franciscop/use-async/issues",
   "funding": "https://www.paypal.me/franciscopresencia/19",
   "author": "Francisco Presencia <public@francisco.io> (https://francisco.io/)",
   "license": "MIT",
+  "keywords": [
+    "use-async",
+    "react",
+    "hooks",
+    "async",
+    "use-effect"
+  ],
   "scripts": {
     "build": "npm run build:library && npm run build:types && npm run build:prettier",
     "build:library": "vite build && mv dist/index.min.js . && rm -rf dist",
@@ -18,21 +24,6 @@
     "start": "vitest",
     "test": "vitest run --coverage"
   },
-  "documentation": {
-    "menu": {
-      "Author": "https://francisco.io/",
-      "Donate": "https://www.paypal.me/franciscopresencia/19",
-      "npm": "https://www.npmjs.com/package/use-async",
-      "Github": "https://github.com/franciscop/use-async"
-    }
-  },
-  "keywords": [
-    "use-async",
-    "react",
-    "hooks",
-    "async",
-    "use-effect"
-  ],
   "main": "index.min.js",
   "type": "module",
   "types": "index.d.ts",
@@ -57,6 +48,14 @@
     "vitest": "^4.1.2"
   },
   "peerDependencies": {
-    "react": ">=16.8.0"
+    "react": ">=18.0.0"
+  },
+  "documentation": {
+    "menu": {
+      "Author": "https://francisco.io/",
+      "Donate": "https://www.paypal.me/franciscopresencia/19",
+      "npm": "https://www.npmjs.com/package/use-async",
+      "Github": "https://github.com/franciscop/use-async"
+    }
   }
 }
