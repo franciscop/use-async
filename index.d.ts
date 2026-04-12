@@ -8,7 +8,7 @@ export type AsyncResult<T> = {
   update: (updater: T | ((prev: T | undefined) => T)) => Promise<void>;
   abort: () => void;
 };
-export declare function useAsync<T = any, Deps extends any[] = any[]>(
+declare function useAsync<T = any, Deps extends any[] = any[]>(
   cb: (signal: AbortSignal, ...deps: Deps) => T | Promise<T>,
   deps?: Deps,
 ): AsyncResult<T>;

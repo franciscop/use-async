@@ -10,7 +10,7 @@ useAsync(async (signal) => {
 }, []);
 ```
 
-<details><summary>Example without `useAsync`</summary>
+<details><summary>Example without <code>useAsync</code></summary>
   
 ```ts
 // Equivalent without it:
@@ -53,6 +53,34 @@ const getUser = async (signal, id) => {
 
 const { data, error, loading } = useAsync<User>(getUser, [id]);
 ```
+
+## Getting started
+
+
+First create a React project (try [Vite with React or React-TS](https://vite.dev/guide/)) and install `use-async`:
+
+```sh
+npm install use-async
+```
+
+Then you can use `useAsync()` anywhere you want:
+
+```tsx
+import useAsync from 'use-async';
+
+export default function UserList() {
+  const { data, loading, error } = useAsync(() => api.get('/users'), []);
+  
+  if (loading) return <LoadingSkeleton />;
+  if (error) return <ErrorMessage>{error.message}</ErrorMessage>;
+  
+  return (
+    <div>
+      {data.map(user => <div>{user.name}</div>)}
+    </div>
+  );
+}
+````
 
 
 ## API
@@ -232,9 +260,7 @@ const getUser = async (signal: AbortSignal, id: number, userId: number) => { ...
 useAsync(getUser, [id, userId]);
 ```
 
-## Examples
-
-### Simple async effect
+## Simple async effect
 
 When you don't need the return value, use it like `useEffect` but async. The signal aborts automatically when the component unmounts or when a dep changes, so stale requests never cause state updates on an unmounted component:
 
@@ -259,7 +285,7 @@ useEffect(() => {
 }, [id]);
 ```
 
-### Data fetching
+## Data fetching
 
 Return the value from the callback and destructure `data`, `error`, and `loading`. The hook handles the full lifecycle with no extra state management:
 
@@ -284,7 +310,7 @@ export default function UserProfile({ id }: { id: number }) {
 }
 ```
 
-### Extracting the callback
+## Extracting the callback
 
 Since deps are passed as arguments to the callback, it depends only on its parameters. This makes it easy to pull out as a standalone, reusable, and testable function:
 
@@ -301,7 +327,7 @@ export default function UserProfile({ id }: { id: number }) {
 }
 ```
 
-### Search with race condition prevention
+## Search with race condition prevention
 
 When `query` changes on every keystroke, each keystroke fires a new request. Without cancellation, slow responses from earlier keystrokes can arrive after newer ones, showing the wrong results. The signal handles this automatically, when `query` changes, the previous request is aborted before the new one starts:
 
@@ -327,7 +353,7 @@ export default function UserSearch() {
 
 No debouncing library needed for correctness, even if you fire 10 requests rapidly, only the last one's result will ever be set as `data`. Debouncing is still useful to reduce server load, but it's no longer required for correctness.
 
-### Refresh after mutation
+## Refresh after mutation
 
 `refresh()` returns a `Promise` that resolves only when the new data has been fetched and stored. This lets you sequence a mutation and a reload without managing any extra loading state:
 
@@ -363,7 +389,7 @@ export default function TodoList() {
 }
 ```
 
-### Optimistic update with rollback
+## Optimistic update with rollback
 
 `update()` sets `data` immediately so the UI feels instant. If the request fails, roll back to the previous value by re-running the callback with `refresh()`. The combination of the two gives you the full optimistic update pattern:
 
@@ -398,7 +424,7 @@ export default function TodoList() {
 }
 ```
 
-### Pagination / load more
+## Pagination / load more
 
 Use `update(fn)` to accumulate pages rather than replace them. The dep tracks the current page number; each time it increments, the callback fetches that page and appends it to the existing list:
 
@@ -428,7 +454,7 @@ export default function PostFeed() {
 }
 ```
 
-### With statux
+## With statux
 
 [statux](https://statux.dev) is a global state manager. The natural pattern is to load data into the store once on mount, then have any component read from it. `useAsync` replaces the manual `useEffect` + fetch pattern the statux docs suggest:
 
@@ -475,7 +501,7 @@ function App() {
 }
 ```
 
-### With form-mate
+## With form-mate
 
 [form-mate](https://form-mate.dev) handles form submission and its loading/error state. Combined with `useAsync`, you get the full data lifecycle: load data into the form, submit changes, and refresh the list — all without managing extra state:
 
@@ -520,7 +546,7 @@ const handleSubmit = async ({ title }: { title: string }) => {
 };
 ````
 
-### With fch
+## With fch
 
 [fch](https://github.com/franciscop/fetch) is a tiny fetch wrapper that returns the parsed body directly (no `.json()` unwrapping, no `.data` property). It also throws automatically on non-2xx responses, which aligns perfectly with how `useAsync` captures errors:
 
@@ -558,7 +584,7 @@ const handleDelete = async (id: number) => {
 };
 ```
 
-### Cleanup via signal
+## Cleanup via signal
 
 For subscriptions or any resource that must be explicitly released, use `signal.addEventListener("abort", ...)`. This runs the cleanup whenever the component unmounts or the deps change, even if it happens mid-async:
 

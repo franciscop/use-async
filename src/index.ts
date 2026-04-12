@@ -9,7 +9,7 @@ export type AsyncResult<T> = {
   abort: () => void;
 };
 
-export function useAsync<T = any, Deps extends any[] = any[]>(
+function useAsync<T = any, Deps extends any[] = any[]>(
   cb: (signal: AbortSignal, ...deps: Deps) => T | Promise<T>,
   deps: Deps = [] as any,
 ): AsyncResult<T> {
