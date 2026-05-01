@@ -76,7 +76,7 @@ describe("useAsync", () => {
 
   it("works with a synchronous callback", async () => {
     const Home = () => {
-      const { data, loading } = useAsync((signal) => "sync", []);
+      const { data, loading } = useAsync((_signal) => "sync", []);
       return <div>{loading ? "loading" : data}</div>;
     };
     const $demo = $(<Home />);
@@ -158,7 +158,7 @@ describe("useAsync", () => {
 
   it("receives deps as arguments", async () => {
     const Home = ({ id }: { id: number }) => {
-      const { data } = useAsync(async (signal, id) => id * 2, [id]);
+      const { data } = useAsync(async (_signal, id) => id * 2, [id]);
       return <div>{data}</div>;
     };
     const $demo = $(<Home id={5} />);
@@ -168,7 +168,7 @@ describe("useAsync", () => {
 
   it("re-runs when deps change", async () => {
     const Home = ({ id }: { id: number }) => {
-      const { data } = useAsync(async (signal, id) => `user-${id}`, [id]);
+      const { data } = useAsync(async (_signal, id) => `user-${id}`, [id]);
       return <div>{data}</div>;
     };
     const $demo = $(<Home id={1} />);
@@ -181,7 +181,7 @@ describe("useAsync", () => {
   it("loading is true again when deps change", async () => {
     const Home = ({ id }: { id: number }) => {
       const { loading } = useAsync(
-        async (signal, id) => {
+        async (_signal, id) => {
           await delay(50);
           return id;
         },
@@ -199,7 +199,7 @@ describe("useAsync", () => {
   it("stale result is ignored when deps change mid-flight", async () => {
     const Home = ({ id }: { id: number }) => {
       const { data } = useAsync(
-        async (signal, id) => {
+        async (_signal, id) => {
           await delay(id === 1 ? 100 : 20);
           return `user-${id}`;
         },
@@ -345,7 +345,7 @@ describe("useAsync", () => {
   it("refresh uses the latest dep after a dep change", async () => {
     const Home = ({ id }: { id: number }) => {
       const { data, refresh } = useAsync(
-        async (signal, id) => `user-${id}`,
+        async (_signal, id) => `user-${id}`,
         [id],
       );
       return (
@@ -468,7 +468,7 @@ describe("useAsync", () => {
   it("dep change after update still uses the new dep", async () => {
     const Home = ({ id }: { id: number }) => {
       const { data, update } = useAsync(
-        async (signal, id) => `user-${id}`,
+        async (_signal, id) => `user-${id}`,
         [id],
       );
       return (
@@ -504,17 +504,17 @@ describe("useAsync", () => {
 
   it("accepts deps that match the callback signature", () => {
     const check = () => {
-      useAsync((signal, id: number) => id, [1]);
-      useAsync((signal, a: number, b: string) => `${a}${b}`, [1, "ok"]);
-      useAsync((signal) => "no deps", []);
-      useAsync((signal) => "no deps");
+      useAsync((_signal, id: number) => id, [1]);
+      useAsync((_signal, a: number, b: string) => `${a}${b}`, [1, "ok"]);
+      useAsync((_signal) => "no deps", []);
+      useAsync((_signal) => "no deps");
     };
     assertType<typeof check>(check);
   });
 
   it("infers data type from an extracted callback's return type", () => {
     type User = { id: number; name: string };
-    const getUser = (signal: AbortSignal, id: number): User => ({
+    const getUser = (_signal: AbortSignal, id: number): User => ({
       id,
       name: "test",
     });
@@ -525,7 +525,10 @@ describe("useAsync", () => {
 
   it("infers data type from an async callback's return type", () => {
     type User = { id: number; name: string };
-    const getUser = async (signal: AbortSignal, id: number): Promise<User> => ({
+    const getUser = async (
+      _signal: AbortSignal,
+      id: number,
+    ): Promise<User> => ({
       id,
       name: "test",
     });
