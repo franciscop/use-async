@@ -1,6 +1,6 @@
 # useAsync() [![npm install use-async](https://img.shields.io/badge/npm%20install-use--async-blue.svg "install badge")](https://www.npmjs.com/package/use-async) [![test badge](https://github.com/franciscop/use-async/workflows/tests/badge.svg "test badge")](https://github.com/franciscop/use-async/blob/master/.github/workflows/tests.yml) [![gzip size](https://badgen.net/bundlephobia/minzip/use-async?label=gzip&color=green "gzip badge")](https://github.com/franciscop/use-async/blob/master/index.min.js)
 
-A Hook for all your async operations in React. Use it like a basic `useAsyncEffect()`, all the way to more complex usecases like returning data, data refresh, etc.
+A Hook for all your async operations in React. Use it like a simple `async` + `useEffect()`, all the way to more complex usecases like returning data, data refresh, etc.
 
 ```ts
 // Basic usage, like useEffect() + async
