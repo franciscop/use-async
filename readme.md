@@ -10,8 +10,8 @@ useAsync(async (signal) => {
 }, []);
 ```
 
-<details><summary>Example without <code>useAsync</code></summary>
-  
+Example without `useAsync`:
+
 ```ts
 // Equivalent without it:
 useEffect(() => {
@@ -25,8 +25,6 @@ useEffect(() => {
   };
 }, []);
 ```
-
-</details>
 
 For data fetching you can use the return value of `useAsync()` directly to get the state of the operation. This will automatically retrigger when the `id` changes, cancelling the previous `signal`:
 
@@ -88,9 +86,12 @@ export default function UserList() {
 This is the full definition of the API, but most often you won't need even half of the options. Go to examples to see how to do the simple and more complex operations:
 
 ```ts
-const { data, error, loading, refresh, update, abort } = useAsync<DataType>(async (signal, dep1, dep2) => {
+const res = useAsync<DataType>(async (signal, dep1, dep2) => {
   // ...
 }, deps);
+
+// Shape of `res`:
+const { data, error, loading, refresh, update, abort } = res;
 ```
 
 ### `data`
