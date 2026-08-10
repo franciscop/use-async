@@ -10,7 +10,8 @@ useAsync(async (signal) => {
 }, []);
 ```
 
-Example without `useAsync`:
+
+<details><summary>Example without `useAsync`</summary>
 
 ```ts
 // Equivalent without it:
@@ -25,6 +26,8 @@ useEffect(() => {
   };
 }, []);
 ```
+
+</details>
 
 For data fetching you can use the return value of `useAsync()` directly to get the state of the operation. This will automatically retrigger when the `id` changes, cancelling the previous `signal`:
 
