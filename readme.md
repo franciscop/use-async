@@ -478,7 +478,7 @@ function App() {
   return <BookList />;
 }
 
-// Any child can read from the store — no prop drilling, no re-fetch
+// Any child can read from the store, with no prop drilling and no re-fetch
 function BookList() {
   const [books] = useStore("books");
   return books?.map((book) => <BookCard key={book.id} book={book} />);
@@ -507,7 +507,7 @@ function App() {
 
 ## With form-mate
 
-[form-mate](https://form-mate.dev) handles form submission and its loading/error state. Combined with `useAsync`, you get the full data lifecycle: load data into the form, submit changes, and refresh the list — all without managing extra state:
+[form-mate](https://form-mate.dev) handles form submission and its loading/error state. Combined with `useAsync`, you get the full data lifecycle: load data into the form, submit changes, and refresh the list, all without managing extra state:
 
 ```tsx
 import Form, { FormLoading, FormError } from "form-mate";
@@ -539,7 +539,7 @@ export default function TodoList() {
 }
 ```
 
-`form-mate` handles the submission loading/error state; `useAsync` handles the list loading/error state — each does its job independently, and `update()` is the single connection point between them.
+`form-mate` handles the submission loading/error state; `useAsync` handles the list loading/error state. Each does its job independently, and `update()` is the single connection point between them.
 
 If you prefer to trigger a full server-side refresh (other users in the app, etc), could do so with a `await refresh()` better:
 
@@ -565,7 +565,7 @@ function getUser (signal: AbortSignal, id: number): User {
 };
 
 export default function UserProfile({ id }: { id: number }) {
-  // fch returns the body directly — no unwrapping needed
+  // fch returns the body directly, so no unwrapping is needed
   const { data, error, loading } = useAsync(getUser, [id]);
 
   if (loading) return <Spinner />;
